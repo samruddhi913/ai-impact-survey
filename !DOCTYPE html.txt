@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Impact Survey — Student Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- ===== FIREBASE SETUP ===== -->
+<!-- Paste YOUR OWN config below from Firebase Console > Project Settings > Your apps -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getFirestore, collection, addDoc, getDocs, deleteDoc, doc
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // expose to the regular (non-module) script below
+  window.__fb = { db, collection, addDoc, getDocs, deleteDoc, doc };
+  window.__fbReady = true;
+</script>
+<style>
+  :root{
+    --navy:#16233F; --navy-2:#1F3157; --parchment:#F6F1E6; --parchment-2:#EDE5D2;
+    --ink:#20242B; --ink-soft:#4A5063; --gold:#BE9A4E; --sage:#5C7A5E; --rust:#A3563B;
+    --line: rgba(22,35,63,0.14);
+    --serif:'Lora',Georgia,serif; --sans:'Public Sans',-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--parchment);color:var(--ink);font-family:var(--sans);line-height:1.55;}
+  .wrap{max-width:760px;margin:0 auto;padding:0 1.4rem;}
+
+  nav{background:var(--navy);color:var(--parchment);padding:1.1rem 0;}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;}
+  .brand{font-family:var(--serif);font-weight:700;font-size:1.05rem;}
+  .brand span{color:var(--gold);}
+  .tabs{display:flex;gap:.4rem;flex-wrap:wrap;}
+  .tabs button{
+    background:transparent;border:1px solid rgba(246,241,230,0.3);color:var(--parchment);
+    padding:.4rem .9rem;border-radius:20px;font-size:.82rem;cursor:pointer;font-family:var(--sans);
+  }
+  .tabs button.active{background:var(--gold);border-color:var(--gold);color:var(--navy);font-weight:600;}
+
+  main{padding:2.4rem 0 4rem;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  h1{font-family:var(--serif);font-size:1.7rem;color:var(--navy);margin:0 0 .4rem;}
+  .subtitle{color:var(--ink-soft);margin:0 0 1.8rem;max-width:56ch;}
+  .card{background:var(--parchment-2);border-left:3px solid var(--gold);padding:1.4rem 1.5rem;margin-bottom:1.2rem;}
+
+  label{display:block;font-size:.85rem;font-weight:600;color:var(--ink);margin-bottom:.35rem;}
+  input[type=text],input[type=email],select{
+    width:100%;padding:.65rem .8rem;border:1px solid var(--line);background:#fff;
+    border-radius:4px;font-family:var(--sans);font-size:.95rem;margin-bottom:1.1rem;
+  }
+  .btn{
+    background:var(--navy);color:var(--parchment);border:none;padding:.75rem 1.6rem;
+    border-radius:4px;font-family:var(--sans);font-weight:600;font-size:.92rem;cursor:pointer;
+  }
+  .btn:hover{background:var(--navy-2);}
+  .btn.secondary{background:transparent;color:var(--navy);border:1px solid var(--navy);}
+  .btn.danger{background:var(--rust);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+
+  .q-group-label{font-family:var(--serif);font-style:italic;color:var(--sage);font-size:.95rem;margin:1.6rem 0 .8rem;}
+  .q-group-label.risk{color:var(--rust);}
+  .question{margin-bottom:1.3rem;}
+  .question p{margin:0 0 .5rem;font-size:.94rem;color:var(--ink);}
+  .scale{display:flex;gap:.4rem;flex-wrap:wrap;}
+  .scale label{
+    display:flex;flex-direction:column;align-items:center;gap:.3rem;font-weight:400;font-size:.72rem;
+    color:var(--ink-soft);cursor:pointer;flex:1;min-width:56px;margin:0;
+  }
+  .scale input{margin:0;}
+
+  .score-hero{text-align:center;padding:1.6rem 0 2rem;}
+  .score-num{font-family:var(--serif);font-weight:700;font-size:3.4rem;color:var(--navy);}
+  .score-cat{font-size:1rem;font-weight:600;color:var(--gold);margin-top:.2rem;}
+  .gauge-track{background:var(--parchment-2);height:14px;border-radius:8px;overflow:hidden;margin-top:1.2rem;}
+  .gauge-fill{height:100%;background:linear-gradient(90deg,var(--rust),var(--gold),var(--sage));}
+
+  .bar-row{display:grid;grid-template-columns:150px 1fr 46px;align-items:center;gap:.8rem;margin-bottom:.8rem;}
+  .bar-row .bar-label{font-size:.85rem;color:var(--ink-soft);}
+  .bar-track{background:var(--parchment-2);height:11px;border-radius:2px;overflow:hidden;}
+  .bar-fill{height:100%;background:linear-gradient(90deg,var(--navy-2),var(--gold));}
+  .bar-row .bar-val{font-size:.82rem;color:var(--ink-soft);text-align:right;}
+
+  table{width:100%;border-collapse:collapse;margin-top:1rem;font-size:.85rem;}
+  th{text-align:left;font-family:var(--serif);color:var(--navy);padding:.55rem .6rem;border-bottom:2px solid var(--navy);}
+  td{padding:.6rem .6rem;border-bottom:1px solid var(--line);color:var(--ink-soft);}
+  .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.6rem;}
+  .stat-box{background:var(--navy);color:var(--parchment);padding:1rem;text-align:center;border-radius:4px;}
+  .stat-box .num{font-family:var(--serif);font-weight:700;font-size:1.6rem;}
+  .stat-box .lbl{font-size:.72rem;color:#B9C2D9;margin-top:.2rem;}
+  .empty{color:var(--ink-soft);font-style:italic;padding:1.5rem 0;}
+  .note{font-size:.8rem;color:var(--ink-soft);font-style:italic;margin-top:.6rem;}
+  .flow-note{background:var(--parchment-2);border:1px dashed var(--gold);padding:.9rem 1.1rem;font-size:.82rem;color:var(--ink-soft);margin-bottom:1.8rem;}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="brand">AI Impact <span>Survey</span></div>
+    <div class="tabs">
+      <button data-view="register" class="tab-btn">Start</button>
+      <button data-view="dashboard" class="tab-btn">My Results</button>
+      <button data-view="admin" class="tab-btn">Admin</button>
+    </div>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <!-- REGISTRATION -->
+  <div class="view" id="view-register">
+    <h1>Student Registration</h1>
+    <p class="subtitle">Register to take the AI Impact survey. Your response is combined with others to generate class-wide insights.</p>
+    <div class="flow-note">START → Registration → Questionnaire → Store Responses → Calculate Score → Results</div>
+    <div class="card">
+      <label for="reg-name">Full name</label>
+      <input type="text" id="reg-name" placeholder="e.g. Aditi Sharma" />
+      <label for="reg-class">Class / Year</label>
+      <input type="text" id="reg-class" placeholder="e.g. B.Tech 3rd Year" />
+      <label for="reg-email">Email (optional)</label>
+      <input type="email" id="reg-email" placeholder="you@college.edu" />
+      <button class="btn" id="btn-start-survey">Continue to Questionnaire</button>
+      <p class="note" id="reg-error" style="color:var(--rust);display:none;"></p>
+    </div>
+  </div>
+
+  <!-- QUESTIONNAIRE -->
+  <div class="view" id="view-survey">
+    <h1>Student Questionnaire</h1>
+    <p class="subtitle">Rate how much you agree with each statement, from 1 (Strongly Disagree) to 5 (Strongly Agree).</p>
+    <div class="card">
+      <div class="q-group-label">Positive impact statements</div>
+      <div id="q-positive"></div>
+      <div class="q-group-label risk">Risk / negative impact statements</div>
+      <div id="q-negative"></div>
+      <button class="btn" id="btn-submit-survey">Submit &amp; Calculate My Score</button>
+      <p class="note" id="survey-error" style="color:var(--rust);display:none;"></p>
+    </div>
+  </div>
+
+  <!-- STUDENT DASHBOARD -->
+  <div class="view" id="view-dashboard">
+    <h1>Student Dashboard</h1>
+    <p class="subtitle">Your generated results, based on your questionnaire responses.</p>
+    <div id="dashboard-content"><p class="empty">Complete the questionnaire to see your results here.</p></div>
+  </div>
+
+  <!-- ADMIN DASHBOARD -->
+  <div class="view" id="view-admin">
+    <h1>Admin Dashboard</h1>
+    <p class="subtitle">All student data collected so far, with aggregate analysis.</p>
+    <div id="admin-content"><p class="empty">Loading...</p></div>
+  </div>
+
+  <!-- ADMIN LOGIN GATE -->
+  <div class="view" id="view-admin-login">
+    <h1>Admin Access</h1>
+    <p class="subtitle">Enter the admin password to view student data.</p>
+    <div class="card">
+      <label for="admin-pass">Password</label>
+      <input type="password" id="admin-pass" placeholder="Enter password" />
+      <button class="btn" id="btn-admin-login">Unlock Admin Dashboard</button>
+      <p class="note" id="admin-login-error" style="color:var(--rust);display:none;"></p>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const POSITIVE_STATEMENTS = [
+  "AI tools help me understand difficult concepts faster.",
+  "AI makes it easier to get help outside class hours.",
+  "AI tools have improved the quality of my assignments.",
+  "AI helps me study more efficiently by summarising content.",
+  "I feel more confident tackling problems with AI assistance."
+];
+const NEGATIVE_STATEMENTS = [
+  "I rely on AI to give me answers instead of solving problems myself.",
+  "I find it harder to concentrate without checking AI for quick answers.",
+  "I have submitted AI-generated work without checking it carefully.",
+  "I discuss less with classmates because I ask AI instead.",
+  "I worry my critical thinking has weakened due to AI use."
+];
+const SCALE_LABELS = ["Strongly\nDisagree","Disagree","Neutral","Agree","Strongly\nAgree"];
+const ADMIN_PASSWORD = "teacher123"; // change this before real use
+
+let currentStudent = null;
+let adminUnlocked = false;
+
+// ---------- view switching ----------
+function showView(id){
+  const actualId = (id === "admin" && !adminUnlocked) ? "admin-login" : id;
+
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  document.getElementById("view-"+actualId).classList.add("active");
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active", b.dataset.view===id));
+
+  if(actualId==="admin") renderAdmin();
+  if(actualId==="dashboard" && currentStudent) renderDashboard();
+}
+
+document.getElementById("btn-admin-login").addEventListener("click", ()=>{
+  const input = document.getElementById("admin-pass");
+  const err = document.getElementById("admin-login-error");
+  if(input.value === ADMIN_PASSWORD){
+    adminUnlocked = true;
+    input.value = "";
+    err.style.display = "none";
+    showView("admin");
+  }else{
+    err.textContent = "Incorrect password.";
+    err.style.display = "block";
+  }
+});
+document.querySelectorAll(".tab-btn").forEach(b=>{
+  b.addEventListener("click", ()=>showView(b.dataset.view));
+});
+
+// ---------- build questionnaire ----------
+function renderScale(name, idx){
+  let html = '<div class="scale">';
+  for(let i=1;i<=5;i++){
+    html += `<label><input type="radio" name="${name}_${idx}" value="${i}" required>${SCALE_LABELS[i-1].replace("\n","<br>")}</label>`;
+  }
+  html += '</div>';
+  return html;
+}
+function buildQuestions(){
+  const posEl = document.getElementById("q-positive");
+  const negEl = document.getElementById("q-negative");
+  posEl.innerHTML = POSITIVE_STATEMENTS.map((s,i)=>
+    `<div class="question"><p>${i+1}. ${s}</p>${renderScale("pos",i)}</div>`).join("");
+  negEl.innerHTML = NEGATIVE_STATEMENTS.map((s,i)=>
+    `<div class="question"><p>${i+POSITIVE_STATEMENTS.length+1}. ${s}</p>${renderScale("neg",i)}</div>`).join("");
+}
+buildQuestions();
+
+// ---------- registration ----------
+document.getElementById("btn-start-survey").addEventListener("click", ()=>{
+  const name = document.getElementById("reg-name").value.trim();
+  const cls = document.getElementById("reg-class").value.trim();
+  const email = document.getElementById("reg-email").value.trim();
+  const err = document.getElementById("reg-error");
+  if(!name || !cls){
+    err.textContent = "Please enter your name and class/year.";
+    err.style.display = "block";
+    return;
+  }
+  err.style.display = "none";
+  currentStudent = { id: "s_"+Date.now()+"_"+Math.random().toString(36).slice(2,7), name, cls, email };
+  showView("survey");
+});
+
+// ---------- storage helpers (Firestore) ----------
+async function waitForFirebase(){
+  let tries = 0;
+  while(!window.__fbReady && tries < 50){
+    await new Promise(r=>setTimeout(r, 100));
+    tries++;
+  }
+}
+
+async function loadResponses(){
+  try{
+    await waitForFirebase();
+    const { db, collection, getDocs } = window.__fb;
+    const snapshot = await getDocs(collection(db, "responses"));
+    return snapshot.docs.map(d => ({ _docId: d.id, ...d.data() }));
+  }catch(e){
+    console.error("loadResponses failed:", e);
+    return [];
+  }
+}
+
+async function addResponse(record){
+  try{
+    await waitForFirebase();
+    const { db, collection, addDoc } = window.__fb;
+    await addDoc(collection(db, "responses"), record);
+    return true;
+  }catch(e){
+    console.error("addResponse failed:", e);
+    return false;
+  }
+}
+
+async function resetAllResponses(){
+  try{
+    await waitForFirebase();
+    const { db, collection, getDocs, deleteDoc, doc } = window.__fb;
+    const snapshot = await getDocs(collection(db, "responses"));
+    await Promise.all(snapshot.docs.map(d => deleteDoc(doc(db, "responses", d.id))));
+    return true;
+  }catch(e){
+    console.error("resetAllResponses failed:", e);
+    return false;
+  }
+}
+
+// ---------- scoring ----------
+function categoryFor(score){
+  if(score>=80) return {label:"Highly Positive Experience", color:"var(--sage)"};
+  if(score>=60) return {label:"Mostly Positive", color:"var(--sage)"};
+  if(score>=40) return {label:"Mixed / Balanced", color:"var(--gold)"};
+  if(score>=20) return {label:"Some Concern", color:"var(--rust)"};
+  return {label:"High Risk of Negative Impact", color:"var(--rust)"};
+}
+
+// ---------- questionnaire submit ----------
+document.getElementById("btn-submit-survey").addEventListener("click", async ()=>{
+  const err = document.getElementById("survey-error");
+  const posAnswers = [], negAnswers = [];
+  for(let i=0;i<POSITIVE_STATEMENTS.length;i++){
+    const el = document.querySelector(`input[name="pos_${i}"]:checked`);
+    if(!el){ err.textContent="Please answer every question before submitting."; err.style.display="block"; return; }
+    posAnswers.push(Number(el.value));
+  }
+  for(let i=0;i<NEGATIVE_STATEMENTS.length;i++){
+    const el = document.querySelector(`input[name="neg_${i}"]:checked`);
+    if(!el){ err.textContent="Please answer every question before submitting."; err.style.display="block"; return; }
+    negAnswers.push(Number(el.value));
+  }
+  err.style.display="none";
+
+  const posAvg = posAnswers.reduce((a,b)=>a+b,0)/posAnswers.length;
+  const negAvg = negAnswers.reduce((a,b)=>a+b,0)/negAnswers.length;
+  const negAvgInverted = 6 - negAvg;
+  const overallScore = Math.round(((posAvg + negAvgInverted)/10)*100);
+  const category = categoryFor(overallScore);
+
+  const record = {
+    id: currentStudent.id,
+    name: currentStudent.name,
+    cls: currentStudent.cls,
+    email: currentStudent.email,
+    posAvg: +posAvg.toFixed(2),
+    negAvg: +negAvg.toFixed(2),
+    overallScore,
+    categoryLabel: category.label,
+    timestamp: new Date().toISOString()
+  };
+
+  const btn = document.getElementById("btn-submit-survey");
+  btn.disabled = true; btn.textContent = "Saving...";
+
+  const ok = await addResponse(record);
+
+  btn.disabled = false; btn.textContent = "Submit & Calculate My Score";
+
+  if(!ok){
+    err.textContent = "Could not save your response — please try again.";
+    err.style.display = "block";
+    return;
+  }
+
+  currentStudent.result = record;
+  showView("dashboard");
+});
+
+// ---------- student dashboard ----------
+async function renderDashboard(){
+  const el = document.getElementById("dashboard-content");
+  if(!currentStudent || !currentStudent.result){
+    el.innerHTML = '<p class="empty">Complete the questionnaire to see your results here.</p>';
+    return;
+  }
+  el.innerHTML = '<p class="empty">Loading your results...</p>';
+  const r = currentStudent.result;
+  const cat = categoryFor(r.overallScore);
+  const all = await loadResponses();
+  const classAvg = all.length ? Math.round(all.reduce((a,b)=>a+b.overallScore,0)/all.length) : r.overallScore;
+
+  el.innerHTML = `
+    <div class="score-hero">
+      <div class="score-num">${r.overallScore}</div>
+      <div class="score-cat" style="color:${cat.color}">${cat.label}</div>
+      <div class="gauge-track"><div class="gauge-fill" style="width:${r.overallScore}%"></div></div>
+    </div>
+    <div class="card">
+      <h1 style="font-size:1.05rem;">Breakdown</h1>
+      <div class="bar-row"><span class="bar-label">Positive statements</span><div class="bar-track"><div class="bar-fill" style="width:${r.posAvg/5*100}%"></div></div><span class="bar-val">${r.posAvg}/5</span></div>
+      <div class="bar-row"><span class="bar-label">Risk statements</span><div class="bar-track"><div class="bar-fill" style="width:${r.negAvg/5*100}%"></div></div><span class="bar-val">${r.negAvg}/5</span></div>
+      <div class="bar-row"><span class="bar-label">Your score</span><div class="bar-track"><div class="bar-fill" style="width:${r.overallScore}%"></div></div><span class="bar-val">${r.overallScore}</span></div>
+      <div class="bar-row"><span class="bar-label">Class average</span><div class="bar-track"><div class="bar-fill" style="width:${classAvg}%"></div></div><span class="bar-val">${classAvg}</span></div>
+      <p class="note">Based on ${all.length} response${all.length===1?"":"s"} submitted so far.</p>
+    </div>
+  `;
+}
+
+// ---------- admin dashboard ----------
+async function renderAdmin(){
+  const el = document.getElementById("admin-content");
+  el.innerHTML = '<p class="empty">Loading student data...</p>';
+  const all = await loadResponses();
+
+  if(!all.length){
+    el.innerHTML = '<p class="empty">No student responses yet.</p>';
+    return;
+  }
+
+  const avg = Math.round(all.reduce((a,b)=>a+b.overallScore,0)/all.length);
+  const cats = {};
+  all.forEach(r=>{ cats[r.categoryLabel] = (cats[r.categoryLabel]||0)+1; });
+  const maxCat = Math.max(...Object.values(cats));
+
+  const rows = all.slice().reverse().map(r=>`
+    <tr>
+      <td>${r.name}</td>
+      <td>${r.cls}</td>
+      <td>${r.overallScore}</td>
+      <td>${r.categoryLabel}</td>
+      <td>${new Date(r.timestamp).toLocaleDateString()}</td>
+    </tr>`).join("");
+
+  const catBars = Object.entries(cats).map(([label,count])=>`
+    <div class="bar-row"><span class="bar-label">${label}</span><div class="bar-track"><div class="bar-fill" style="width:${count/maxCat*100}%"></div></div><span class="bar-val">${count}</span></div>
+  `).join("");
+
+  el.innerHTML = `
+    <div class="stat-grid">
+      <div class="stat-box"><div class="num">${all.length}</div><div class="lbl">Total Responses</div></div>
+      <div class="stat-box"><div class="num">${avg}</div><div class="lbl">Average Score</div></div>
+      <div class="stat-box"><div class="num">${Object.keys(cats).length}</div><div class="lbl">Categories Seen</div></div>
+    </div>
+    <div class="card">
+      <h1 style="font-size:1.05rem;">Score Distribution</h1>
+      ${catBars}
+    </div>
+    <div class="card">
+      <h1 style="font-size:1.05rem;">All Student Data</h1>
+      <table>
+        <tr><th>Name</th><th>Class</th><th>Score</th><th>Category</th><th>Date</th></tr>
+        ${rows}
+      </table>
+    </div>
+    <button class="btn danger" id="btn-reset">Reset All Data</button>
+    <button class="btn secondary" id="btn-lock" style="margin-left:.6rem;">Lock Admin</button>
+  `;
+
+  document.getElementById("btn-reset").addEventListener("click", async ()=>{
+    if(!confirm("This will permanently delete all student responses. Continue?")) return;
+    await resetAllResponses();
+    renderAdmin();
+  });
+
+  document.getElementById("btn-lock").addEventListener("click", ()=>{
+    adminUnlocked = false;
+    showView("register");
+  });
+}
+
+showView("register");
+</script>
+</body>
+</html>
