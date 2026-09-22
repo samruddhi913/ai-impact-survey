@@ -6,31 +6,6 @@
 <title>AI Impact Survey — Student Platform</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-<!-- ===== FIREBASE SETUP ===== -->
-<!-- Paste YOUR OWN config below from Firebase Console > Project Settings > Your apps -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import {
-    getFirestore, collection, addDoc, getDocs, deleteDoc, doc
-  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
-  // expose to the regular (non-module) script below
-  window.__fb = { db, collection, addDoc, getDocs, deleteDoc, doc };
-  window.__fbReady = true;
-</script>
 <style>
   :root{
     --navy:#16233F; --navy-2:#1F3157; --parchment:#F6F1E6; --parchment-2:#EDE5D2;
@@ -62,7 +37,7 @@
   .card{background:var(--parchment-2);border-left:3px solid var(--gold);padding:1.4rem 1.5rem;margin-bottom:1.2rem;}
 
   label{display:block;font-size:.85rem;font-weight:600;color:var(--ink);margin-bottom:.35rem;}
-  input[type=text],input[type=email],select{
+  input[type=text],input[type=email],input[type=password],select{
     width:100%;padding:.65rem .8rem;border:1px solid var(--line);background:#fff;
     border-radius:4px;font-family:var(--sans);font-size:.95rem;margin-bottom:1.1rem;
   }
@@ -170,7 +145,6 @@
     <div id="admin-content"><p class="empty">Loading...</p></div>
   </div>
 
-  <!-- ADMIN LOGIN GATE -->
   <div class="view" id="view-admin-login">
     <h1>Admin Access</h1>
     <p class="subtitle">Enter the admin password to view student data.</p>
@@ -269,48 +243,22 @@ document.getElementById("btn-start-survey").addEventListener("click", ()=>{
   showView("survey");
 });
 
-// ---------- storage helpers (Firestore) ----------
-async function waitForFirebase(){
-  let tries = 0;
-  while(!window.__fbReady && tries < 50){
-    await new Promise(r=>setTimeout(r, 100));
-    tries++;
-  }
-}
+// ---------- storage helpers (this device only, no external database) ----------
+const LOCAL_KEY = "ai_impact_survey_responses_local";
 
-async function loadResponses(){
+function loadResponses(){
   try{
-    await waitForFirebase();
-    const { db, collection, getDocs } = window.__fb;
-    const snapshot = await getDocs(collection(db, "responses"));
-    return snapshot.docs.map(d => ({ _docId: d.id, ...d.data() }));
+    const raw = localStorage.getItem(LOCAL_KEY);
+    return raw ? JSON.parse(raw) : [];
   }catch(e){
-    console.error("loadResponses failed:", e);
     return [];
   }
 }
-
-async function addResponse(record){
+function saveResponses(arr){
   try{
-    await waitForFirebase();
-    const { db, collection, addDoc } = window.__fb;
-    await addDoc(collection(db, "responses"), record);
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(arr));
     return true;
   }catch(e){
-    console.error("addResponse failed:", e);
-    return false;
-  }
-}
-
-async function resetAllResponses(){
-  try{
-    await waitForFirebase();
-    const { db, collection, getDocs, deleteDoc, doc } = window.__fb;
-    const snapshot = await getDocs(collection(db, "responses"));
-    await Promise.all(snapshot.docs.map(d => deleteDoc(doc(db, "responses", d.id))));
-    return true;
-  }catch(e){
-    console.error("resetAllResponses failed:", e);
     return false;
   }
 }
@@ -361,7 +309,9 @@ document.getElementById("btn-submit-survey").addEventListener("click", async ()=
   const btn = document.getElementById("btn-submit-survey");
   btn.disabled = true; btn.textContent = "Saving...";
 
-  const ok = await addResponse(record);
+  const arr = loadResponses();
+  arr.push(record);
+  const ok = saveResponses(arr);
 
   btn.disabled = false; btn.textContent = "Submit & Calculate My Score";
 
@@ -385,7 +335,7 @@ async function renderDashboard(){
   el.innerHTML = '<p class="empty">Loading your results...</p>';
   const r = currentStudent.result;
   const cat = categoryFor(r.overallScore);
-  const all = await loadResponses();
+  const all = loadResponses();
   const classAvg = all.length ? Math.round(all.reduce((a,b)=>a+b.overallScore,0)/all.length) : r.overallScore;
 
   el.innerHTML = `
@@ -409,10 +359,10 @@ async function renderDashboard(){
 async function renderAdmin(){
   const el = document.getElementById("admin-content");
   el.innerHTML = '<p class="empty">Loading student data...</p>';
-  const all = await loadResponses();
+  const all = loadResponses();
 
   if(!all.length){
-    el.innerHTML = '<p class="empty">No student responses yet.</p>';
+    el.innerHTML = '<p class="empty">No responses yet on this device. Note: this simplified version only shows submissions made on this same browser/device.</p>';
     return;
   }
 
@@ -456,8 +406,8 @@ async function renderAdmin(){
   `;
 
   document.getElementById("btn-reset").addEventListener("click", async ()=>{
-    if(!confirm("This will permanently delete all student responses. Continue?")) return;
-    await resetAllResponses();
+    if(!confirm("This will permanently delete responses saved on this device. Continue?")) return;
+    saveResponses([]);
     renderAdmin();
   });
 
